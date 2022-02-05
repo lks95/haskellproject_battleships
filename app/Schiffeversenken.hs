@@ -43,10 +43,10 @@ schiffEingeben gesetztesSchiff x = do
 
 --alle schiffe auf dem feld platzieren
 schiffeEingeben :: Int -> [Schiff] -> IO [Schiff]
-schiffeEingeben schiffsgroesse gesetztesSchiff = if schiffsgroesse <= maxSchiffe then
+schiffeEingeben schiffsGroesse gesetzteSchiffe = if schiffsgroesse <= maxSchiffe then
                                                     do
-                                                    schiff <- schiffEingeben gesetztesSchiff schiffsgroesse
-                                                    alleschiffe <- schiffeEingeben (schiffsgroesse +1) (schiff : gesetztesSchiff)
+                                                    schiff <- schiffEingeben gesetzteSchiffe schiffsGroesse
+                                                    alleschiffe <- schiffeEingeben (schiffsGroesse +1) (schiff : gesetzteSchiffe)
                                                     return (schiff : alleschiffe)
                                                     else
                                                     return []
