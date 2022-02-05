@@ -33,6 +33,7 @@ namenEingeben = do
 --schiffEingeben implementieren
 --grundgedanke: wie werden die koordinaten eingegeben? (0|0) oder 0,0 oder (0,0) etc.
 
+--(0,1);(0,2)
 --einzelnes schiff anlegen via koordinaten
 --x als laenge des schiffes
 schiffEingeben :: Int -> [Schiff] -> IO [Schiff]
@@ -67,10 +68,58 @@ start namen feld schiffe = do
                                 putStrLn ("\n" ++ head namen ++ "ist dran.")
                                 spielFeldUI (last namen) (last feld) (last schiffe)
 
+--schiff als "getroffen" markieren
+-- ein einzelenes feld des koordinatensystems als getroffen markieren
+alsGetroffenMarkieren :: Spielfeld -> Int -> Int -> Spielfeld
+alsGetroffenMarkieren feld x y = ersetzen x feld (ersetzen y (select x feld) True)
+
+-- dass nte Element einer liste ersetzen
+ersetzen :: Int -> [a] -> a -> [a]
+ersetzen n xs x = take (n-1) xs ++ [x] ++ drop n xs
+
 --schiffe kaputt schiessen/angreifen
     --wiederholender angriff bei treffer
 
---schiff als "getroffen" markieren
+angreifen :: (Spielfeld, [Schiff]) -> Koordinaten -> (Spielfeld, [Schiff], Bool)
+angreifen (gegnerSpielfeld, gegnerSchiffe) koordinate = (alsGetroffenMarkieren gegnerSpielfeld (snd koordinate) (fst koordinate),
+                                            zerstoerteSchiffeEntf [fst (checkSchiffZerstoert gegnerSpielfeld schiff koordinate) | schiff <- gegnerSchiffe],
+                                            or [snd (checkSchiffZerstoert gegnerSpielfeld schiff koordinate) | schiff <- gegnerSchiffe])
+
+zerstoerteSchiffeEntf :: [Schiff] -> [Schiff]
+zerstoerteSchiffeEntf [] = []
+zerstoerteSchiffeEntf (x:xs) | null x = zerstoerteSchiffeEntf xs
+                             | otherwise = x : zerstoerteSchiffeEntf xs
+
+
+
+angreifenMitAllenSchiffen :: (Field, [Ship]) -> [Ship] -> IO (Field, [Ship])
+angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) [] = return (gegnerSpielfeld, gegnerSchiffe)
+angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe = do
+
+                                                        putStrLn ("Koordinaten eingeben auf die gefeuert werden soll (noch" ++ show (length ourShips) ++ "Schuesse uebrig)")
+                                                        string <- getLine
+
+                                                        let koordinate = convertStringToCoordinates string
+
+                                                        if koordinateValidieren koordinate then
+                                                            do
+                                                              let (gegnerSpielfeldNeu, gegnerSchiffeNeu, getroffen) = angreifen (gegnerSpielfeld, gegnerSchiffe) koordinate
+
+                                                              if hit then
+                                                                  putStrLn ("Auf Koordinate (" ++ show ((fst koordinate) - 1) ++ "," ++ show ((koordinate) - 1) ++ ") gefeuert und getroffen!")
+                                                              else
+                                                                  putStrLn ("Auf Koordinate (" ++ show ((fst koordinate) - 1) ++ "," ++ show ((koordinate) - 1) ++ ") gefeuert und verfehlt!")
+
+                                                              if length gegnerSchiffeNeu < length gegnerSchiffeNeu then
+                                                                  do
+                                                                    putStrLn "Du hast mein Schiff getroffen und versunken!"
+                                                                    angreifenMitAllenSchiffen (gegnerSpielfeldNeu, gegnerSchiffeNeu) (tail eigeneSchiffe)
+                                                              else
+                                                                  angreifenMitAllenSchiffen (gegnerSpielfeldNeu, gegnerSchiffeNeu) (tail eigeneSchiffe)
+                                                        else
+                                                            putStrLn "Koordinaten fehlerhaft, Format: (0,0)"
+                                                            angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe
+
 
 --gesunkene schiffe markieren
 
@@ -84,6 +133,13 @@ start namen feld schiffe = do
     --liegt die vom user eingegebene koordinate im spielfeld? (angriff)
     --liegt die vom user eingegebene koordinate im spielfeld? (schiffe platzieren)
 
+
+-- Überprüfe, ob eine Koordinate im gültigen Bereich liegt
+koordinatenValidieren :: Koordinaten -> Bool
+koordinatenValidieren koordinate = fst koordinate >= 1 &&
+                            snd koordinate >= 1 &&
+                            fst koordinate <= fieldSize &&
+                            snd koordinate <= fieldSize
 
 main :: IO ()
 main = do
