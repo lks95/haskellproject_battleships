@@ -84,12 +84,21 @@ angreifen :: (Spielfeld, [Schiff]) -> Koordinaten -> (Spielfeld, [Schiff], Bool)
 angreifen (gegnerSpielfeld, gegnerSchiffe) koordinate = (alsGetroffenMarkieren gegnerSpielfeld (snd koordinate) (fst koordinate),
                                             zerstoerteSchiffeEntf [fst (checkSchiffZerstoert gegnerSpielfeld schiff koordinate) | schiff <- gegnerSchiffe],
                                             or [snd (checkSchiffZerstoert gegnerSpielfeld schiff koordinate) | schiff <- gegnerSchiffe])
+--validierungs sachen
+-- überprüft, ob Schiff getroffen wurde
+checkSchiffZerstoert :: Feld -> Schiff -> Koordinate -> (Schiff, Bool)
+checkSchiffZerstoert feld schiff koordinate
+                                            -- Schiff wurde nicht getroffen
+                                            | not (or [koordinate == koord | koord <- schiff]) = (schiff, False)
+                                            -- Schiff wurde getroffen, aber nicht versenkt
+                                            | not (and [select (fst koord) (select (snd koord) feld) == True | koord <- schiff, koord /= koordinate]) = (schiff, True)
+                                            -- Schiff wurde nicht getroffen
+                                            | otherwise = ([], True)
 
 zerstoerteSchiffeEntf :: [Schiff] -> [Schiff]
 zerstoerteSchiffeEntf [] = []
 zerstoerteSchiffeEntf (x:xs) | null x = zerstoerteSchiffeEntf xs
                              | otherwise = x : zerstoerteSchiffeEntf xs
-
 
 
 angreifenMitAllenSchiffen :: (Field, [Ship]) -> [Ship] -> IO (Field, [Ship])
@@ -129,17 +138,17 @@ angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe = do
     --laenge des schiffs
     --getroffenes feld/koordinate eines schiffs
 
---validierungs sachen
-    --liegt die vom user eingegebene koordinate im spielfeld? (angriff)
-    --liegt die vom user eingegebene koordinate im spielfeld? (schiffe platzieren)
+
 
 
 -- Überprüfe, ob eine Koordinate im gültigen Bereich liegt
+    --liegt die vom user eingegebene koordinate im spielfeld? (angriff)
+    --liegt die vom user eingegebene koordinate im spielfeld? (schiffe platzieren)
 koordinatenValidieren :: Koordinaten -> Bool
-koordinatenValidieren koordinate = fst koordinate >= 1 &&
-                            snd koordinate >= 1 &&
-                            fst koordinate <= fieldSize &&
-                            snd koordinate <= fieldSize
+koordinatenValidieren koord = fst koord >= 1 &&
+                            snd koord >= 1 &&
+                            fst koord <= fieldSize &&
+                            snd koord <= fieldSize
 
 main :: IO ()
 main = do
