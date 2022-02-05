@@ -5,6 +5,9 @@ type Spieler = String
 
 --spielfeldgröße setzen (erweiterbar)
 spielFeldGroesse = 10
+--schiffsgroesse implementieren
+minSchiffe = 1
+maxSchiffe = 3
 
 --spielfeld setzen, groesse soll variabel sein, feldgroesse mit sich selber multiplizieren
 spielFeldStart :: Spielfeld
@@ -27,20 +30,18 @@ namenEingeben = do
 
                 return [name1, name2]
 
---schieffgroesse implementieren
-minSchiffe = 1
-maxSchiffe = 3
-
 --schiffEingeben implementieren
-
 --grundgedanke: wie werden die koordinaten eingegeben? (0|0) oder 0,0 oder (0,0) etc.
+
+--einzelnes schiff anlegen via koordinaten
+--x als laenge des schiffes
 schiffEingeben :: Int -> [Schiff] -> IO [Schiff]
 schiffEingeben gesetztesSchiff x = do
                                     putStrLn ("Bitte Koordinaten des Schiffes" ++ show x ++ "eingeben.")
                                     string <- getLine
                                     --wirft noch error hier, convertstring hier einbinden
 
---alle schiffe uebergeben fuer main
+--alle schiffe auf dem feld platzieren
 schiffeEingeben :: Int -> [Schiff] -> IO [Schiff]
 schiffeEingeben schiffsgroesse gesetztesSchiff = if schiffsgroesse <= maxSchiffe then
                                                     do
@@ -50,17 +51,39 @@ schiffeEingeben schiffsgroesse gesetztesSchiff = if schiffsgroesse <= maxSchiffe
                                                     else
                                                     return []
 
-
+--anzeigen des spielfelds
 spielFeldUI :: String -> Spielfeld -> [Schiff] -> IO ()
 spielFeldUI spielerName spielfeld schiffe = do
                                             putStrLn (spielerName ++ "'s Spielfeld:")
                                             putStrLn (take (spielFeldGroesse+2) (repeat '*') ++ "\n*" ++ spielfeld schiffe (1,1) ++ take (spielFeldGroesse+1) (repeat '*'))
                                             putStrLn ""
 
+--dass eigentliche spielen des spiels
+--jeder spieler abwechselnd, es sei denn er trifft
+
+--benoetigte, erfuellte parameter: namen von beiden spielern, spielfeld von beiden spielern und die schiffe
 start :: [String] -> [Spielfeld] -> [[Schiff]] -> IO()
 start namen feld schiffe = do
                                 putStrLn ("\n" ++ head namen ++ "ist dran.")
                                 spielFeldUI (last namen) (last feld) (last schiffe)
+
+--schiffe kaputt schiessen/angreifen
+    --wiederholender angriff bei treffer
+
+--schiff als "getroffen" markieren
+
+--gesunkene schiffe markieren
+
+--schreibweise koordinaten input
+
+--funktion zum pruefen ob ein schiff komplett getroffen wurde
+    --laenge des schiffs
+    --getroffenes feld/koordinate eines schiffs
+
+--validierungs sachen
+    --liegt die vom user eingegebene koordinate im spielfeld? (angriff)
+    --liegt die vom user eingegebene koordinate im spielfeld? (schiffe platzieren)
+
 
 main :: IO ()
 main = do
