@@ -53,7 +53,7 @@ The Game is over as soon as all ships of one player have sunk.
 * Exception Handling for too many ships
 * Exception Handling for wrongly arranged ships (e.g. (1|1) and (2|2))
 * Exception Handling for input format
-* Exception Handling if a user already fired a shot at the coordinates e.g. "You already fired a shot at (1|1) and it was a miss!" or "You already fired a shot at (1|1) and it was a hit!"
+* Exception Handling if a user already fired a shot at the coordinates e.g. "You already fired a shot at (1|1) and it was a miss!" or "You already fired a shot at (1|1) and it was a hit!!"
 
 ## Tech-Stack
 
