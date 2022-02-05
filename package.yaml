@@ -27,7 +27,7 @@ library:
 
 executables:
   haskellproject22-exe:
-    main:                Main.hs
+    main:                Schiffeversenken.hs
     source-dirs:         app
     ghc-options:
     - -threaded
