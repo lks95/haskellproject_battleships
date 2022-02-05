@@ -7,9 +7,15 @@ type Spieler = String
 spielFeldGroesse = 10
 
 --spielfeld setzen, groesse soll variabel sein, feldgroesse mit sich selber multiplizieren
-spielFeldStart :: Field
+spielFeldStart :: Spielfeld
 spielFeldStart = take spielFeldGroesse (repeat (take spielFeldGroesse (repeat False)))
 
+
+--tristan input, um die koordinaten aus einem string zu extrahieren
+--bei invalider eingabe von koordinaten ? --> (-1, -1)
+convertStringToCoordinates :: String -> Koordinaten
+convertStringToCoordinates ['(', x, ',', y, ')'] = ((read [x] :: Int) + 1, (read [y] :: Int) + 1)
+convertStringToCoordinates  = (-1, -1)
 
 namenEingeben :: IO [String]
 namenEingeben = do
@@ -32,6 +38,7 @@ schiffEingeben :: Int -> [Schiff] -> IO [Schiff]
 schiffEingeben gesetztesSchiff x = do
                                     putStrLn ("Bitte Koordinaten des Schiffes" ++ show x ++ "eingeben.")
                                     string <- getLine
+                                    --wirft noch error hier, convertstring hier einbinden
 
 --alle schiffe uebergeben fuer main
 schiffeEingeben :: Int -> [Schiff] -> IO [Schiff]
@@ -42,6 +49,19 @@ schiffeEingeben schiffsgroesse gesetztesSchiff = if schiffsgroesse <= maxSchiffe
                                                     return (schiff : alleschiffe)
                                                     else
                                                     return []
+
+
+spielFeldUI :: String -> Spielfeld -> [Schiff] -> IO ()
+spielFeldUI spielerName spielfeld schiffe = do
+                                            putStrLn (spielerName ++ "'s Spielfeld:")
+                                            putStrLn (take (spielFeldGroesse+2) (repeat '*') ++ "\n*" ++ spielfeld schiffe (1,1) ++ take (spielFeldGroesse+1) (repeat '*'))
+                                            putStrLn ""
+
+start :: [String] -> [Spielfeld] -> [[Schiff]] -> IO()
+start namen feld schiffe = do
+                                putStrLn ("\n" ++ head namen ++ "ist dran.")
+                                spielFeldUI (last namen) (last feld) (last schiffe)
+
 main :: IO ()
 main = do
 
@@ -56,5 +76,5 @@ main = do
     putStrLn (last spielernamen ++ ", bitte setze deine Schiffe")
     spieler2 <- schiffeEingeben schiffGroesse []
 
-    --variable fehlt zum starten
+    --funktion fehlt zum starten, start funktion sollte auch UI beinhalten
     spielernamen [spielFeldStart, spielFeldStart] [spieler1, spieler2]
