@@ -4,10 +4,10 @@ type Spielfeld = [[Bool]]
 type Spieler = String
 
 --spielfeldgröße setzen (erweiterbar)
-spielFeldGroesse = 10
+spielFeldGroesse = 5
 --schiffsgroesse implementieren
 minSchiffe = 1
-maxSchiffe = 3
+maxSchiffe = 2
 
 --spielfeld setzen, groesse soll variabel sein, feldgroesse mit sich selber multiplizieren
 spielFeldStart :: Spielfeld
