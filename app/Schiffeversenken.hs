@@ -36,24 +36,23 @@ namenEingeben = do
 
 schiffKoordinatenValidieren :: [Schiff] -> Schiff -> Int -> Bool
 schiffKoordinatenValidieren gesetzteSchiffe schiff schiffLaenge
-    -- Check if ship was given enough coordinates
+    -- Überprüfung, ob genügend Koordinaten angegeben wurden für die Schifflänge
     | length schiff /= schiffLaenge = False
-    -- The coordinates may not overlap with another ship
+    -- Überprüfung, ob eine Koordinate des neuen Schiffs mit einem vorhandenen Schiff kollidiert 
     | or [coord1 == coord2 | schiff2 <- gesetzteSchiffe, coord1 <- schiff, coord2 <- schiff2] = False
-    -- Check if coordinates lie in the field
-    | not (and [koordinateValidieren coord | coord <- schiff]) = False 
-    -- Check if coordinates are neighbors (vertical)
-    | and (map (==0) [abs ((fst coord1) - (fst coord2)) | coord1 <- schiff, coord2 <- schiff])
+    -- Überprüfung, ob alle Koordinaten im Spielfeld liegen
+    | not (and [koordinateValidieren coord | coord <- schiff]) = False
+    -- Überprüfung, ob alle Koordinaten des neuen Schiffes in einer Spalte liegen
+    | and (map (== 0) [abs ((fst coord1) - (fst coord2)) | coord1 <- schiff, coord2 <- schiff])
         = (sum [abs ((snd coord1) - (snd coord2)) | coord1 <- schiff, coord2 <- schiff]) * 3 == (schiffLaenge-1) * (schiffLaenge^2 + schiffLaenge)
-    -- Check if coordinates are neighbors (horizontal)
-    | and (map (==0) [abs ((snd coord1) - (snd coord2)) | coord1 <- schiff, coord2 <- schiff]) 
+    -- Überprüfung, ob alle Koordinaten des neuen Schiffes in einer Zeile liegen
+    | and (map (== 0) [abs ((snd coord1) - (snd coord2)) | coord1 <- schiff, coord2 <- schiff])
         = (sum [abs ((fst coord1) - (fst coord2)) | coord1 <- schiff, coord2 <- schiff]) * 3 == (schiffLaenge-1) * (schiffLaenge^2 + schiffLaenge)
-    -- Coordinates are not on the same line
-    | otherwise = False 
+    -- Wenn die Koordinaten nicht in einer Reihe liegen
+    | otherwise = False
 
---(0,1);(0,2)
---einzelnes schiff anlegen via koordinaten
---x als laenge des schiffes
+-- einzelnes Schiff anlegen via Koordinaten
+-- x als laenge des schiffes
 schiffEingeben :: [Schiff] -> Int -> IO Schiff
 schiffEingeben gesetzteSchiffe x = do
                                     putStrLn ("Bitte Koordinaten des Schiffes mit der Größe " ++ show x ++ " eingeben.")
@@ -64,34 +63,34 @@ schiffEingeben gesetzteSchiffe x = do
                                         return coords
                                     else
                                         schiffEingeben gesetzteSchiffe x
-                                    --TODO: wirft noch error hier, convertstring hier einbinden
 
---alle schiffe auf dem feld platzieren
+-- alle Schiffe auf dem Feld platzieren
 schiffeEingeben :: Int -> [Schiff] -> IO [Schiff]
 schiffeEingeben schiffsGroesse gesetzteSchiffe = if schiffsGroesse <= maxSchiffe then
                                                     do
                                                         schiff <- schiffEingeben gesetzteSchiffe schiffsGroesse
-                                                        alleschiffe <- schiffeEingeben (schiffsGroesse +1) (schiff : gesetzteSchiffe)
-                                                        return (schiff : alleschiffe)
+                                                        alleSchiffe <- schiffeEingeben (schiffsGroesse +1) (schiff : gesetzteSchiffe)
+                                                        return (schiff : alleSchiffe)
                                                 else
                                                     return []
 
+-- String-Repräsentation eines Felds ausgeben
 feldZuString :: Spielfeld -> [Schiff] -> Koordinate -> String
 feldZuString spielfeld schiffe koordinate
         | fst koordinate <= spielFeldGroesse
           && snd koordinate <= spielFeldGroesse = if select (fst koordinate) (select (snd koordinate) spielfeld) == True then
-                                               if or [koordinate == coord | schiff <- schiffe, coord <- schiff] then 'o' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
-                                                   else 'x' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
+                                               if or [koordinate == coord | schiff <- schiffe, coord <- schiff] then 'O' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
+                                                   else '*' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
                                            else ' ' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
                                         
-        | snd koordinate <= spielFeldGroesse = "*\n*" ++ feldZuString spielfeld schiffe (1, snd koordinate + 1)
+        | snd koordinate <= spielFeldGroesse = "H\nH" ++ feldZuString spielfeld schiffe (1, snd koordinate + 1)
         | otherwise = []
 
 --anzeigen des spielfelds
 spielFeldUI :: String -> Spielfeld -> [Schiff] -> IO ()
 spielFeldUI spielerName spielfeld schiffe = do
                                             putStrLn (spielerName ++ "'s Spielfeld:")
-                                            putStrLn (take (spielFeldGroesse+2) (repeat '*') ++ "\n*" ++ feldZuString spielfeld schiffe (1,1) ++ take (spielFeldGroesse+1) (repeat '*'))
+                                            putStrLn (take (spielFeldGroesse+2) (repeat 'H') ++ "\nH" ++ feldZuString spielfeld schiffe (1,1) ++ take (spielFeldGroesse+1) (repeat 'H'))
                                             putStrLn ""
 
 --dass eigentliche spielen des spiels
@@ -100,7 +99,7 @@ spielFeldUI spielerName spielfeld schiffe = do
 --benoetigte, erfuellte parameter: namen von beiden spielern, spielfeld von beiden spielern und die schiffe
 start :: [String] -> [Spielfeld] -> [[Schiff]] -> IO ()
 start namen feld schiffe = do
-                                putStrLn ("\n" ++ head namen ++ "ist dran.")
+                                putStrLn ("\n" ++ head namen ++ " ist dran.")
                                 spielFeldUI (last namen) (last feld) (last schiffe)
                                 (neuesFeld, neueSchiffListe) <- angreifenMitAllenSchiffen (last feld, last schiffe) (head schiffe)
                                 if length neueSchiffListe == 0 then
@@ -111,9 +110,9 @@ start namen feld schiffe = do
                                                            else
                                                                start [last namen, head namen] [neuesFeld, head feld] [neueSchiffListe, head schiffe]
 
--- Select the n-th element in a list
+-- Das n-te Element einer Liste ausgeben (ähnlich list !! (n - 1))
 select :: Int -> [a] -> a
-select n xs = head (drop (n-1) (take n xs))
+select n xs = xs !! (n-1)
 
 --schiff als "getroffen" markieren
 -- ein einzelenes feld des koordinatensystems als getroffen markieren
@@ -179,10 +178,6 @@ angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe = do
 --gesunkene schiffe markieren
 
 --schreibweise koordinaten input
-
---funktion zum pruefen ob ein schiff komplett getroffen wurde
-    --laenge des schiffs
-    --getroffenes feld/koordinate eines schiffs
 
 -- Überprüfe, ob eine Koordinate im gültigen Bereich liegt
     --liegt die vom user eingegebene koordinate im spielfeld? (angriff)
