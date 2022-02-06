@@ -1,5 +1,5 @@
-type Koordinaten = (Int, Int)
-type Schiff = [Koordinaten]
+type Koordinate = (Int, Int)
+type Schiff = [Koordinate]
 type Spielfeld = [[Bool]]
 type Spieler = String
 
@@ -13,12 +13,16 @@ maxSchiffe = 2
 spielFeldStart :: Spielfeld
 spielFeldStart = take spielFeldGroesse (repeat (take spielFeldGroesse (repeat False)))
 
-
 --tristan input, um die koordinaten aus einem string zu extrahieren
 --bei invalider eingabe von koordinaten ? --> (-1, -1)
-convertStringToCoordinates :: String -> Koordinaten
-convertStringToCoordinates ['(', x, ',', y, ')'] = ((read [x] :: Int) + 1, (read [y] :: Int) + 1)
-convertStringToCoordinates  = (-1, -1)
+stringInKoordinateUmwandeln :: String -> Koordinate
+stringInKoordinateUmwandeln ['(', x, ',', y, ')'] = ((read [x] :: Int) + 1, (read [y] :: Int) + 1)
+stringInKoordinateUmwandeln x | otherwise = (-1, -1)
+
+listeVonKoordinatenStrings :: String -> [String]
+listeVonKoordinatenStrings [] = [[]]
+listeVonKoordinatenStrings (x:xs) | x == ';' = [] : listeVonKoordinatenStrings xs
+                                | otherwise = (x : head (listeVonKoordinatenStrings xs)) : tail (listeVonKoordinatenStrings xs)
 
 namenEingeben :: IO [String]
 namenEingeben = do
@@ -30,43 +34,86 @@ namenEingeben = do
 
                 return [name1, name2]
 
---schiffEingeben implementieren
---grundgedanke: wie werden die koordinaten eingegeben? (0|0) oder 0,0 oder (0,0) etc.
+schiffKoordinatenValidieren :: [Schiff] -> Schiff -> Int -> Bool
+schiffKoordinatenValidieren gesetzteSchiffe schiff schiffLaenge
+    -- Check if ship was given enough coordinates
+    | length schiff /= schiffLaenge = False
+    -- The coordinates may not overlap with another ship
+    | or [coord1 == coord2 | schiff2 <- gesetzteSchiffe, coord1 <- schiff, coord2 <- schiff2] = False
+    -- Check if coordinates lie in the field
+    | not (and [koordinateValidieren coord | coord <- schiff]) = False 
+    -- Check if coordinates are neighbors (vertical)
+    | and (map (==0) [abs ((fst coord1) - (fst coord2)) | coord1 <- schiff, coord2 <- schiff])
+        = (sum [abs ((snd coord1) - (snd coord2)) | coord1 <- schiff, coord2 <- schiff]) * 3 == (schiffLaenge-1) * (schiffLaenge^2 + schiffLaenge)
+    -- Check if coordinates are neighbors (horizontal)
+    | and (map (==0) [abs ((snd coord1) - (snd coord2)) | coord1 <- schiff, coord2 <- schiff]) 
+        = (sum [abs ((fst coord1) - (fst coord2)) | coord1 <- schiff, coord2 <- schiff]) * 3 == (schiffLaenge-1) * (schiffLaenge^2 + schiffLaenge)
+    -- Coordinates are not on the same line
+    | otherwise = False 
 
 --(0,1);(0,2)
 --einzelnes schiff anlegen via koordinaten
 --x als laenge des schiffes
-schiffEingeben :: Int -> [Schiff] -> IO [Schiff]
-schiffEingeben gesetztesSchiff x = do
-                                    putStrLn ("Bitte Koordinaten des Schiffes" ++ show x ++ "eingeben.")
+schiffEingeben :: [Schiff] -> Int -> IO Schiff
+schiffEingeben gesetzteSchiffe x = do
+                                    putStrLn ("Bitte Koordinaten des Schiffes mit der Größe " ++ show x ++ " eingeben.")
                                     string <- getLine
-                                    --wirft noch error hier, convertstring hier einbinden
+                                    let stringCoords = listeVonKoordinatenStrings string
+                                    let coords = map stringInKoordinateUmwandeln stringCoords
+                                    if schiffKoordinatenValidieren gesetzteSchiffe coords x then
+                                        return coords
+                                    else
+                                        schiffEingeben gesetzteSchiffe x
+                                    --TODO: wirft noch error hier, convertstring hier einbinden
 
 --alle schiffe auf dem feld platzieren
 schiffeEingeben :: Int -> [Schiff] -> IO [Schiff]
-schiffeEingeben schiffsGroesse gesetzteSchiffe = if schiffsgroesse <= maxSchiffe then
+schiffeEingeben schiffsGroesse gesetzteSchiffe = if schiffsGroesse <= maxSchiffe then
                                                     do
-                                                    schiff <- schiffEingeben gesetzteSchiffe schiffsGroesse
-                                                    alleschiffe <- schiffeEingeben (schiffsGroesse +1) (schiff : gesetzteSchiffe)
-                                                    return (schiff : alleschiffe)
-                                                    else
+                                                        schiff <- schiffEingeben gesetzteSchiffe schiffsGroesse
+                                                        alleschiffe <- schiffeEingeben (schiffsGroesse +1) (schiff : gesetzteSchiffe)
+                                                        return (schiff : alleschiffe)
+                                                else
                                                     return []
+
+feldZuString :: Spielfeld -> [Schiff] -> Koordinate -> String
+feldZuString spielfeld schiffe koordinate
+        | fst koordinate <= spielFeldGroesse
+          && snd koordinate <= spielFeldGroesse = if select (fst koordinate) (select (snd koordinate) spielfeld) == True then
+                                               if or [koordinate == coord | schiff <- schiffe, coord <- schiff] then 'o' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
+                                                   else 'x' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
+                                           else ' ' : feldZuString spielfeld schiffe (fst koordinate + 1, snd koordinate)
+                                        
+        | snd koordinate <= spielFeldGroesse = "*\n*" ++ feldZuString spielfeld schiffe (1, snd koordinate + 1)
+        | otherwise = []
 
 --anzeigen des spielfelds
 spielFeldUI :: String -> Spielfeld -> [Schiff] -> IO ()
 spielFeldUI spielerName spielfeld schiffe = do
                                             putStrLn (spielerName ++ "'s Spielfeld:")
-                                            putStrLn (take (spielFeldGroesse+2) (repeat '*') ++ "\n*" ++ spielfeld schiffe (1,1) ++ take (spielFeldGroesse+1) (repeat '*'))
+                                            putStrLn (take (spielFeldGroesse+2) (repeat '*') ++ "\n*" ++ feldZuString spielfeld schiffe (1,1) ++ take (spielFeldGroesse+1) (repeat '*'))
                                             putStrLn ""
 
 --dass eigentliche spielen des spiels
 --jeder spieler abwechselnd, es sei denn er trifft
 
 --benoetigte, erfuellte parameter: namen von beiden spielern, spielfeld von beiden spielern und die schiffe
-start :: [String] -> [Spielfeld] -> [[Schiff]] -> IO()
+start :: [String] -> [Spielfeld] -> [[Schiff]] -> IO ()
 start namen feld schiffe = do
                                 putStrLn ("\n" ++ head namen ++ "ist dran.")
                                 spielFeldUI (last namen) (last feld) (last schiffe)
+                                (neuesFeld, neueSchiffListe) <- angreifenMitAllenSchiffen (last feld, last schiffe) (head schiffe)
+                                if length neueSchiffListe == 0 then
+                                                               do
+                                                                 putStrLn ("\n" ++ head namen ++ " hat gewonnen!\n")
+                                                                 spielFeldUI (last namen) neuesFeld neueSchiffListe
+                                                                 spielFeldUI (head namen) (head feld) (head schiffe)
+                                                           else
+                                                               start [last namen, head namen] [neuesFeld, head feld] [neueSchiffListe, head schiffe]
+
+-- Select the n-th element in a list
+select :: Int -> [a] -> a
+select n xs = head (drop (n-1) (take n xs))
 
 --schiff als "getroffen" markieren
 -- ein einzelenes feld des koordinatensystems als getroffen markieren
@@ -80,13 +127,13 @@ ersetzen n xs x = take (n-1) xs ++ [x] ++ drop n xs
 --schiffe kaputt schiessen/angreifen
     --wiederholender angriff bei treffer
 
-angreifen :: (Spielfeld, [Schiff]) -> Koordinaten -> (Spielfeld, [Schiff], Bool)
+angreifen :: (Spielfeld, [Schiff]) -> Koordinate -> (Spielfeld, [Schiff], Bool)
 angreifen (gegnerSpielfeld, gegnerSchiffe) koordinate = (alsGetroffenMarkieren gegnerSpielfeld (snd koordinate) (fst koordinate),
                                             zerstoerteSchiffeEntf [fst (checkSchiffZerstoert gegnerSpielfeld schiff koordinate) | schiff <- gegnerSchiffe],
                                             or [snd (checkSchiffZerstoert gegnerSpielfeld schiff koordinate) | schiff <- gegnerSchiffe])
 --validierungs sachen
 -- überprüft, ob Schiff getroffen wurde
-checkSchiffZerstoert :: Feld -> Schiff -> Koordinate -> (Schiff, Bool)
+checkSchiffZerstoert :: Spielfeld -> Schiff -> Koordinate -> (Schiff, Bool)
 checkSchiffZerstoert feld schiff koordinate
                                             -- Schiff wurde nicht getroffen
                                             | not (or [koordinate == koord | koord <- schiff]) = (schiff, False)
@@ -101,23 +148,22 @@ zerstoerteSchiffeEntf (x:xs) | null x = zerstoerteSchiffeEntf xs
                              | otherwise = x : zerstoerteSchiffeEntf xs
 
 
-angreifenMitAllenSchiffen :: (Field, [Ship]) -> [Ship] -> IO (Field, [Ship])
+angreifenMitAllenSchiffen :: (Spielfeld, [Schiff]) -> [Schiff] -> IO (Spielfeld, [Schiff])
 angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) [] = return (gegnerSpielfeld, gegnerSchiffe)
 angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe = do
 
-                                                        putStrLn ("Koordinaten eingeben auf die gefeuert werden soll (noch" ++ show (length ourShips) ++ "Schuesse uebrig)")
+                                                        putStrLn ("Koordinaten eingeben auf die gefeuert werden soll (noch " ++ show (length eigeneSchiffe) ++ " Schüsse übrig)")
                                                         string <- getLine
 
-                                                        let koordinate = convertStringToCoordinates string
-
+                                                        let koordinate = stringInKoordinateUmwandeln string
                                                         if koordinateValidieren koordinate then
                                                             do
                                                               let (gegnerSpielfeldNeu, gegnerSchiffeNeu, getroffen) = angreifen (gegnerSpielfeld, gegnerSchiffe) koordinate
 
-                                                              if hit then
-                                                                  putStrLn ("Auf Koordinate (" ++ show ((fst koordinate) - 1) ++ "," ++ show ((koordinate) - 1) ++ ") gefeuert und getroffen!")
+                                                              if getroffen then
+                                                                  putStrLn ("Auf Koordinate (" ++ show ((fst koordinate) - 1) ++ "," ++ show ((snd koordinate) - 1) ++ ") gefeuert und getroffen!")
                                                               else
-                                                                  putStrLn ("Auf Koordinate (" ++ show ((fst koordinate) - 1) ++ "," ++ show ((koordinate) - 1) ++ ") gefeuert und verfehlt!")
+                                                                  putStrLn ("Auf Koordinate (" ++ show ((fst koordinate) - 1) ++ "," ++ show ((snd koordinate) - 1) ++ ") gefeuert und verfehlt!")
 
                                                               if length gegnerSchiffeNeu < length gegnerSchiffeNeu then
                                                                   do
@@ -126,7 +172,7 @@ angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe = do
                                                               else
                                                                   angreifenMitAllenSchiffen (gegnerSpielfeldNeu, gegnerSchiffeNeu) (tail eigeneSchiffe)
                                                         else
-                                                            putStrLn "Koordinaten fehlerhaft, Format: (0,0)"
+                                                            -- putStrLn "Koordinaten fehlerhaft, Format: (0,0)"
                                                             angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe
 
 
@@ -138,17 +184,14 @@ angreifenMitAllenSchiffen (gegnerSpielfeld, gegnerSchiffe) eigeneSchiffe = do
     --laenge des schiffs
     --getroffenes feld/koordinate eines schiffs
 
-
-
-
 -- Überprüfe, ob eine Koordinate im gültigen Bereich liegt
     --liegt die vom user eingegebene koordinate im spielfeld? (angriff)
     --liegt die vom user eingegebene koordinate im spielfeld? (schiffe platzieren)
-koordinatenValidieren :: Koordinaten -> Bool
-koordinatenValidieren koord = fst koord >= 1 &&
+koordinateValidieren :: Koordinate -> Bool
+koordinateValidieren koord = fst koord >= 1 &&
                             snd koord >= 1 &&
-                            fst koord <= fieldSize &&
-                            snd koord <= fieldSize
+                            fst koord <= spielFeldGroesse &&
+                            snd koord <= spielFeldGroesse
 
 main :: IO ()
 main = do
@@ -156,13 +199,17 @@ main = do
     --auslagern in methode
     spielernamen <- namenEingeben
 
+    putStrLn ("Jeder Spieler verfügt über " ++ show (maxSchiffe - minSchiffe + 1) ++ " Schiffe.")
+    putStrLn("Das Spielfeld ist " ++ show spielFeldGroesse ++ " * " ++ show spielFeldGroesse ++ " Felder groß.")
     --head and tail bzw. last fuer erstes und letztes element (der namen)
     --bei schiffeEingeben muessen alle Schiffe uergeben werden, nicht nur eins
     putStrLn (head spielernamen ++ ", bitte setze deine Schiffe")
-    spieler1 <- schiffeEingeben schiffGroesse []
+    putStrLn ("Das Eingabeformat entspricht '(1,1);(1,2)'")
+    spieler1 <- schiffeEingeben minSchiffe []
 
     putStrLn (last spielernamen ++ ", bitte setze deine Schiffe")
-    spieler2 <- schiffeEingeben schiffGroesse []
+    putStrLn ("Das Eingabeformat entspricht '(1,1);(1,2)'")
+    spieler2 <- schiffeEingeben minSchiffe []
 
     --funktion fehlt zum starten, start funktion sollte auch UI beinhalten
-    spielernamen [spielFeldStart, spielFeldStart] [spieler1, spieler2]
+    start spielernamen [spielFeldStart, spielFeldStart] [spieler1, spieler2]
